@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { Chart, ArcElement, Tooltip, Legend, PieController } from 'chart.js';
 import { CommonModule } from '@angular/common';
 import { BreadcrumbsComponent } from '../breadcrumbs/breadcrumbs.component';
+import { ContactComponent } from '../contact/contact.component';
 
 // Register ALL required Chart.js components
 Chart.register(
