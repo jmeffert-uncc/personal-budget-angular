@@ -8,6 +8,7 @@ const port = 3000;
 app.use(cors());
 
 app.get('/budget', (req, res) => {
+    console.log('Budget endpoint called');
     res.json({
         data: {
             myBudget: [
