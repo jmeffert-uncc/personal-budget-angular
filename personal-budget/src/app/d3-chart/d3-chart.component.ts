@@ -1,11 +1,7 @@
-import { Component, OnInit, ElementRef, AfterViewInit, PLATFORM_ID, Inject } from '@angular/core';
+import { Component, AfterViewInit, ElementRef, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import * as d3 from 'd3';
-
-interface BudgetItem {
-  title: string;
-  budget: number;
-}
+import { DataService, BudgetItem } from '../data.service';
 
 @Component({
   selector: 'pb-d3-chart',
@@ -35,24 +31,26 @@ interface BudgetItem {
 export class D3ChartComponent implements AfterViewInit {
   constructor(
     private el: ElementRef,
-    @Inject(PLATFORM_ID) private platformId: Object
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private dataService: DataService
   ) {}
 
   ngAfterViewInit() {
-    // Only run D3 code in browser environment
     if (isPlatformBrowser(this.platformId)) {
-      const data = {
-        myBudget: [
-          { title: 'Eat out', budget: 30 },
-          { title: 'Rent', budget: 350 },
-          { title: 'Groceries', budget: 90 },
-        ]
-      };
-      this.createD3Chart(data);
+      this.dataService.fetchData();
+      this.dataService.data$.subscribe(data => {
+        if (data && Array.isArray(data) && data.length > 0) {
+          this.createD3Chart({ myBudget: data });
+        }
+      });
     }
   }
 
   private createD3Chart(data: { myBudget: BudgetItem[] }) {
+    if (!data || !data.myBudget || !Array.isArray(data.myBudget)) {
+      return;
+    }
+    
     const width = 350;
     const height = 400;
     const margin = 80;

@@ -1,19 +1,14 @@
-import { Component, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, PLATFORM_ID, Inject } from '@angular/core';
 import { ArticleComponent } from '../article/article.component';
 import { HttpClient } from '@angular/common/http';
-import { Chart, ArcElement, Tooltip, Legend, PieController } from 'chart.js';
+import { Chart } from 'chart.js/auto';
 import { CommonModule } from '@angular/common';
 import { BreadcrumbsComponent } from '../breadcrumbs/breadcrumbs.component';
 import { ContactComponent } from '../contact/contact.component';
 import { D3ChartComponent } from '../d3-chart/d3-chart.component';
-
-// Register ALL required Chart.js components
-Chart.register(
-  ArcElement,
-  Tooltip,
-  Legend,
-  PieController
-);
+import { DataService } from '../data.service';
+import { BudgetItem } from '../data.service';
+import { isPlatformBrowser } from '@angular/common';
 
 @Component({
   selector: 'pb-homepage',
@@ -27,9 +22,9 @@ Chart.register(
   styleUrl: './homepage.component.scss',
   standalone: true
 })
-export class HomepageComponent implements OnInit, AfterViewInit {
+export class HomepageComponent implements OnInit {
   @ViewChild('myChart') myChart!: ElementRef;
-  private chart: Chart | undefined;
+  chart: any;
   
   public dataSource = {
     datasets: [{
@@ -44,74 +39,51 @@ export class HomepageComponent implements OnInit, AfterViewInit {
     labels: [] as string[]
   };
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private dataService: DataService,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {}
 
   ngOnInit(): void {
-    this.loadData();
+    this.dataService.fetchData();
   }
 
   ngAfterViewInit(): void {
-    // If we already have data, create the chart
-    if (this.dataSource.datasets[0].data.length > 0) {
-      this.createChart();
+    if (isPlatformBrowser(this.platformId)) {
+      this.dataService.data$.subscribe(data => {
+        if (data && Array.isArray(data) && data.length > 0) {
+          this.createChart(data);
+        }
+      });
     }
   }
 
-  private loadData(): void {
-    this.http.get('http://localhost:3000/budget')
-      .subscribe({
-        next: (res: any) => {
-          console.log('API Response:', res);
-          
-          // Update data source
-          this.dataSource.datasets[0].data = res.data.myBudget.map((item: any) => item.budget);
-          this.dataSource.labels = res.data.myBudget.map((item: any) => item.title);
-          
-          // Only create chart if view is initialized
-          if (this.myChart) {
-            this.createChart();
-          }
-        },
-        error: (error) => {
-          console.error('API Error:', error);
-        }
-      });
-  }
-
-  private createChart(): void {
-    if (typeof window === 'undefined') return; // Skip if not in browser
-    
-    const canvas = this.myChart?.nativeElement;
-    if (!canvas) {
-      console.error('Canvas element not found!');
+  private createChart(data: any[]) {
+    if (!this.myChart || !isPlatformBrowser(this.platformId)) {
       return;
     }
 
-    try {
-      // Destroy existing chart if it exists
-      if (this.chart) {
-        this.chart.destroy();
-      }
-
-      // Create new chart
-      this.chart = new Chart(canvas, {
-        type: 'pie',
-        data: this.dataSource,
-        options: {
-          responsive: true,
-          plugins: {
-            legend: {
-              position: 'top',
-            },
-            title: {
-              display: true,
-              text: 'Budget Distribution'
-            }
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Error creating chart:', error);
+    if (this.chart) {
+      this.chart.destroy();
     }
+
+    const ctx = this.myChart.nativeElement.getContext('2d');
+    this.chart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: data.map(item => item.title),
+        datasets: [{
+          data: data.map(item => item.budget),
+          backgroundColor: [
+            '#98abc5', '#8a89a6', '#7b6888', '#6b486b', 
+            '#a05d56', '#d0743c', '#ff8c00'
+          ]
+        }]
+      },
+      options: {
+        responsive: true
+      }
+    });
   }
 }
